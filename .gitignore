@@ -1,0 +1,5 @@
+target/
+fat32.img*
+fs.img
+kernel-qemu
+testsuits/
