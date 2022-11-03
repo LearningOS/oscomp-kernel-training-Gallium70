@@ -1,4 +1,4 @@
-mod ramdisk;
+// mod ramdisk;
 mod virtio_blk;
 
 use alloc::sync::Arc;
