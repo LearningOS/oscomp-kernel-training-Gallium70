@@ -18,7 +18,7 @@ KERNEL_ENTRY_PA := 0x80200000
 OBJDUMP := rust-objdump --arch-name=riscv64
 OBJCOPY := rust-objcopy --binary-architecture=riscv64
 
-build: $(KERNEL_BIN) fs-img
+build: $(KERNEL_BIN)
 
 fs-img: $(APPS)
 # @make -C ../user build TEST=$(TEST) CHAPTER=$(CHAPTER) BASE=$(BASE)
