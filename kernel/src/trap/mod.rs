@@ -15,12 +15,15 @@
 mod context;
 
 use crate::config::TRAMPOLINE;
+use crate::mm::translated_ref;
 use crate::syscall::syscall;
 use crate::task::{
     current_process, current_task, current_trap_cx, current_trap_cx_user_va, current_user_token,
     exit_current_and_run_next, suspend_current_and_run_next,
 };
 use crate::timer::{check_timer, set_next_trigger};
+use alloc::string::String;
+use alloc::{fmt, format};
 use riscv::register::{
     mtvec::TrapMode,
     scause::{self, Exception, Interrupt, Trap},
@@ -48,6 +51,25 @@ fn set_user_trap_entry() {
 pub fn enable_timer_interrupt() {
     unsafe {
         sie::set_stimer();
+    }
+}
+
+fn peek_user_mem(addr: isize) {
+    debug!("Peeking user memory near {:x}:", addr);
+    let token = current_user_token();
+    const PEEK_RANGE: isize = 16;
+    const PEEK_STEP: isize = 1;
+    type PeekType = usize;
+    let size = core::mem::size_of::<PeekType>() as isize;
+    for offset in -PEEK_RANGE..PEEK_RANGE {
+        let base = addr + offset * PEEK_STEP * size;
+        let mut f = String::new();
+        f += &format!("{:x}: ", base);
+        for sub_idx in 0..PEEK_STEP {
+            let ptr = base + sub_idx * size;
+            f += &format!("{:x} ", *translated_ref(token, ptr as *const PeekType));
+        }
+        debug!("{}", f);
     }
 }
 
@@ -81,6 +103,8 @@ pub fn trap_handler() -> ! {
                 current_trap_cx().sepc,
                 current_trap_cx()
             );
+            // peek stack
+            peek_user_mem(current_trap_cx().x[2] as _);
             // page fault exit code
             exit_current_and_run_next(-2);
         }

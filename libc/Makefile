@@ -65,7 +65,7 @@ src/functional/tls_align.out: src/functional/tls_align.c src/functional/tls_alig
 	$(CC) $^ $(COMMON_SRCS) $(CFLAGS) -g -o $@
 
 %.S : %.out
-	$(OBJDUMP) -ld -S $^ > $@
+	$(OBJDUMP) -hldsSt $^ > $@
 
 test:
 	@echo $(STATIC_TESTCASES)
