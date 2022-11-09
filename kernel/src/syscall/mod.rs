@@ -40,6 +40,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 4]) -> isize {
 
         let ret = match syscall {
             SyscallNo::DUP => sys_dup(args[0]),
+            SyscallNo::IOCTL => sys_ioctl(args[0], args[1]),
             SyscallNo::UNLINKAT => sys_unlinkat(args[1] as *const u8),
             SyscallNo::LINKAT => sys_linkat(args[1] as *const u8, args[3] as *const u8),
             SyscallNo::OPEN => sys_open(args[1] as *const u8, args[2] as u32),
@@ -47,6 +48,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 4]) -> isize {
             SyscallNo::PIPE => sys_pipe(args[0] as *mut usize),
             SyscallNo::READ => sys_read(args[0], args[1] as *const u8, args[2]),
             SyscallNo::WRITE => sys_write(args[0], args[1] as *const u8, args[2]),
+            SyscallNo::WRITEV => sys_writev(args[0], args[1] as *const _, args[2]),
             SyscallNo::FSTAT => sys_fstat(args[0], args[1] as *mut Stat),
             SyscallNo::EXIT => sys_exit(args[0] as i32),
             SyscallNo::SET_TID_ADDRESS => sys_set_tid_address(),

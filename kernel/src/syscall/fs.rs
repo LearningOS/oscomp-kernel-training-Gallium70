@@ -5,12 +5,20 @@ use crate::fs::open_file;
 use crate::fs::OpenFlags;
 use crate::fs::Stat;
 use crate::mm::translated_byte_buffer;
+use crate::mm::translated_ref;
 use crate::mm::translated_refmut;
 use crate::mm::translated_str;
 use crate::mm::UserBuffer;
 use crate::task::current_process;
 use crate::task::current_user_token;
 use alloc::sync::Arc;
+use alloc::vec::Vec;
+
+#[repr(C)]
+pub struct Iovec {
+    pub base: *const u8,
+    pub len: usize,
+}
 
 pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
     let token = current_user_token();
@@ -25,8 +33,21 @@ pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
         drop(inner);
         file.write(UserBuffer::new(translated_byte_buffer(token, buf, len))) as isize
     } else {
+        warn!("write failed: fd: {}, buf: {:?}, len: {}", fd, buf, len);
         -1
     }
+}
+
+pub fn sys_writev(fd: usize, iov_ptr: *const Iovec, iovcnt: usize) -> isize {
+    let token = current_user_token();
+    let iov_vec: Vec<_> = (0..iovcnt)
+        .map(|idx| translated_ref(token, iov_ptr.wrapping_add(idx)))
+        .collect();
+    let mut ret = 0;
+    for iov in iov_vec {
+        ret += sys_write(fd, iov.base, iov.len);
+    }
+    ret
 }
 
 pub fn sys_read(fd: usize, buf: *const u8, len: usize) -> isize {
@@ -110,5 +131,9 @@ pub fn sys_linkat(_old_name: *const u8, _new_name: *const u8) -> isize {
 }
 
 pub fn sys_unlinkat(_name: *const u8) -> isize {
+    -1
+}
+
+pub fn sys_ioctl(_fd: usize, _req: usize) -> isize {
     -1
 }
