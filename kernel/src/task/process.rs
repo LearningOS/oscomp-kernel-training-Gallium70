@@ -131,7 +131,7 @@ impl ProcessControlBlock {
     // LAB5 HINT: How to initialize deadlock data structures?
     /// Load a new elf to replace the original application address space and start execution
     /// Only support processes with a single thread.
-    pub fn exec(self: &Arc<Self>, elf_data: &[u8], args: Vec<String>) {
+    pub fn exec(self: &Arc<Self>, elf_data: &[u8], args: Vec<String>, envs: Vec<String>) {
         assert_eq!(self.inner_exclusive_access().thread_count(), 1);
         // memory_set with elf program headers/trampoline/trap context/user stack
         let (memory_set, ustack_base, entry_point) = MemorySet::from_elf(elf_data);
@@ -147,29 +147,75 @@ impl ProcessControlBlock {
         task_inner.trap_cx_ppn = task_inner.res.as_mut().unwrap().trap_cx_ppn();
         // push arguments on user stack
         let mut user_sp = task_inner.res.as_mut().unwrap().ustack_top();
-        user_sp -= (args.len() + 1) * core::mem::size_of::<usize>();
-        let argv_base = user_sp;
-        let mut argv: Vec<_> = (0..=args.len())
-            .map(|arg| {
-                translated_refmut(
-                    new_token,
-                    (argv_base + arg * core::mem::size_of::<usize>()) as *mut usize,
-                )
-            })
-            .collect();
-        *argv[args.len()] = 0;
-        for i in 0..args.len() {
-            user_sp -= args[i].len() + 1;
-            *argv[i] = user_sp;
+        let user_sp_base = user_sp;
+
+        // push env strings
+        let mut envp = Vec::new();
+        for env in &envs {
+            user_sp -= env.len() + 1;
+            envp.push(user_sp);
             let mut p = user_sp;
-            for c in args[i].as_bytes() {
+            for c in env.as_bytes() {
                 *translated_refmut(new_token, p as *mut u8) = *c;
                 p += 1;
             }
             *translated_refmut(new_token, p as *mut u8) = 0;
         }
+
+        // push argv strings
+        let mut argv = Vec::new();
+        for arg in &args {
+            user_sp -= arg.len() + 1;
+            argv.push(user_sp);
+            let mut p = user_sp;
+            for c in arg.as_bytes() {
+                *translated_refmut(new_token, p as *mut u8) = *c;
+                p += 1;
+            }
+            *translated_refmut(new_token, p as *mut u8) = 0;
+        }
+
         // make the user_sp aligned to 8B for k210 platform
         user_sp -= user_sp % core::mem::size_of::<usize>();
+
+        // TODO: Auxiliary Vectors
+        user_sp -= core::mem::size_of::<usize>();
+        *translated_refmut(new_token, user_sp as *mut usize) = 0usize;
+
+        // push envp, argv and argc
+        envp.push(0);
+        user_sp -= envp.len() * core::mem::size_of::<usize>();
+        let envp_base = user_sp;
+        for (idx, addr) in envp.iter().enumerate() {
+            *translated_refmut(
+                new_token,
+                (envp_base + idx * core::mem::size_of::<usize>()) as *mut usize,
+            ) = *addr;
+        }
+
+        argv.push(0);
+        user_sp -= argv.len() * core::mem::size_of::<usize>();
+        let argv_base = user_sp;
+        for (idx, addr) in argv.iter().enumerate() {
+            *translated_refmut(
+                new_token,
+                (envp_base + idx * core::mem::size_of::<usize>()) as *mut usize,
+            ) = *addr;
+        }
+
+        user_sp -= core::mem::size_of::<usize>();
+        *translated_refmut(new_token, user_sp as *mut usize) = args.len();
+
+        trace!(
+            "user_sp_base: {:x}, envp_base: {:x}, envc: {}, argv_base: {:x}, argc: {}, user_sp: {:x}",
+            user_sp_base,
+            envp_base,
+            envs.len(),
+            argv_base,
+            args.len(),
+            user_sp
+        );
+
         // initialize trap_cx
         let mut trap_cx = TrapContext::app_init_context(
             entry_point,
@@ -178,8 +224,9 @@ impl ProcessControlBlock {
             task.kernel_stack.get_top(),
             trap_handler as usize,
         );
-        trap_cx.x[10] = args.len();
-        trap_cx.x[11] = argv_base;
+        // trap_cx.x[10] = args.len();
+        // trap_cx.x[11] = argv_base;
+        trap_cx.x[10] = user_sp;
         *task_inner.get_trap_cx() = trap_cx;
     }
 

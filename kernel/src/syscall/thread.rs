@@ -84,3 +84,8 @@ pub fn sys_waittid(tid: usize) -> i32 {
         -2
     }
 }
+
+pub fn sys_set_tid_address() -> isize {
+    // TODO: clear_child_tid
+    sys_gettid()
+}
