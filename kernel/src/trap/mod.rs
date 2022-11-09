@@ -17,8 +17,8 @@ mod context;
 use crate::config::TRAMPOLINE;
 use crate::syscall::syscall;
 use crate::task::{
-    current_trap_cx, current_trap_cx_user_va, current_user_token, exit_current_and_run_next,
-    suspend_current_and_run_next,
+    current_process, current_task, current_trap_cx, current_trap_cx_user_va, current_user_token,
+    exit_current_and_run_next, suspend_current_and_run_next,
 };
 use crate::timer::{check_timer, set_next_trigger};
 use riscv::register::{
@@ -73,17 +73,19 @@ pub fn trap_handler() -> ! {
         | Trap::Exception(Exception::InstructionPageFault)
         | Trap::Exception(Exception::LoadFault)
         | Trap::Exception(Exception::LoadPageFault) => {
-            println!(
-                "[kernel] {:?} in application, bad addr = {:#x}, bad instruction = {:#x}, core dumped.",
+            error!(
+                "{:?} in application (P{}), bad addr = {:#x}, bad instr addr = {:#x}, trap_cx = {}, core dumped.",
                 scause.cause(),
+                current_process().getpid(),
                 stval,
                 current_trap_cx().sepc,
+                current_trap_cx()
             );
             // page fault exit code
             exit_current_and_run_next(-2);
         }
         Trap::Exception(Exception::IllegalInstruction) => {
-            println!("[kernel] IllegalInstruction in application, core dumped.");
+            error!("[kernel] IllegalInstruction in application, core dumped.");
             // illegal instruction exit code
             exit_current_and_run_next(-3);
         }
@@ -105,6 +107,7 @@ pub fn trap_handler() -> ! {
 
 #[no_mangle]
 pub fn trap_return() -> ! {
+    // trace!("return to user");
     set_user_trap_entry();
     let trap_cx_ptr = current_trap_cx_user_va();
     let user_satp = current_user_token();

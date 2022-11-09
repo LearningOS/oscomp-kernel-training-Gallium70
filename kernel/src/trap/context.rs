@@ -1,5 +1,7 @@
 //! Implementation of [`TrapContext`]
 
+use core::fmt;
+
 use riscv::register::sstatus::{self, Sstatus, SPP};
 
 #[repr(C)]
@@ -43,5 +45,26 @@ impl TrapContext {
         };
         cx.set_sp(sp);
         cx
+    }
+}
+
+impl fmt::Display for TrapContext {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "{{")?;
+        writeln!(f, "  ra, sp, gp, tp: {:x?}", &self.x[1..5])?;
+        writeln!(
+            f,
+            "  t0-t6: {:x?}",
+            &[&self.x[5..8], &self.x[28..32]].concat()
+        )?;
+        writeln!(f, "  a0-a7: {:x?}", &self.x[10..17])?;
+        writeln!(
+            f,
+            "  s0-s5: {:x?}",
+            &[&self.x[8..10], &self.x[18..22]].concat()
+        )?;
+        writeln!(f, "  s6-s11: {:x?}", &self.x[22..28])?;
+        write!(f, "}}")?;
+        Ok(())
     }
 }

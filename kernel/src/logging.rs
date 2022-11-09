@@ -26,7 +26,7 @@ impl Log for SimpleLogger {
         let line_loc = record.line().unwrap_or(0);
         // Just dump to sbi console
         console::print(format_args!(
-            "{}{}{}:{}: {}{}",
+            "{}[K]{}{}:{}: {}{}",
             color.as_terminal_string(),
             level_str,
             file_loc,

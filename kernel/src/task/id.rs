@@ -161,6 +161,10 @@ impl TaskUserRes {
             trap_cx_top.into(),
             MapPermission::R | MapPermission::W,
         );
+        debug!(
+            "alloc user res, tid: {}, ustack: 0x{:x} -- 0x{:x}",
+            self.tid, ustack_bottom, ustack_top
+        );
     }
 
     fn dealloc_user_res(&self) {

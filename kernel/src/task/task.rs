@@ -2,6 +2,7 @@
 
 use super::id::TaskUserRes;
 use super::{kstack_alloc, KernelStack, ProcessControlBlock, TaskContext};
+use crate::config::KERNEL_STACK_SIZE;
 use crate::trap::TrapContext;
 use crate::{mm::PhysPageNum, sync::UPSafeCell};
 use alloc::sync::{Arc, Weak};
@@ -63,6 +64,12 @@ impl TaskControlBlock {
         let trap_cx_ppn = res.trap_cx_ppn();
         let kernel_stack = kstack_alloc();
         let kstack_top = kernel_stack.get_top();
+        debug!(
+            "new TCB(P{}): kstack: 0x{:x} - 0x{:x}",
+            process.getpid(),
+            kstack_top - KERNEL_STACK_SIZE,
+            kstack_top
+        );
         Self {
             process: Arc::downgrade(&process),
             kernel_stack,
