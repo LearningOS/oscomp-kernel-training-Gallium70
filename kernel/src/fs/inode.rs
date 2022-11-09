@@ -69,7 +69,6 @@ lazy_static! {
 /// List all files in the filesystems
 pub fn list_apps() {
     println!("/**** APPS ****");
-    println!("#### independent command test");
     for app in ROOT_INODE.ls() {
         println!("{}", app);
     }

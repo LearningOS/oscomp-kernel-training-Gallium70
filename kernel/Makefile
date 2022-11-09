@@ -4,7 +4,8 @@ MODE := release
 KERNEL_ELF := target/$(TARGET)/$(MODE)/os
 KERNEL_BIN := $(KERNEL_ELF).bin
 KERNEL_ASM := $(KERNEL_ELF).asm
-FS_IMG := fs.img
+FS_TESTCASE_DIR := ../libc/build/
+FS_IMG := $(FS_TESTCASE_DIR)/../fs.img
 
 # BOARD
 BOARD ?= qemu
@@ -22,7 +23,7 @@ build: $(KERNEL_BIN)
 
 fs-img: $(APPS)
 # @make -C ../user build TEST=$(TEST) CHAPTER=$(CHAPTER) BASE=$(BASE)
-	@cd ../easy-fs-fuse && cargo run --target=x86_64-unknown-linux-gnu --release -- -s ../testsuits/ -t ../testsuits/
+	@cd ../easy-fs-fuse && cargo run --target=x86_64-unknown-linux-gnu --release -- -s $(FS_TESTCASE_DIR) -t $(FS_TESTCASE_DIR)
 
 env:
 	(rustup target list | grep "riscv64gc-unknown-none-elf (installed)") || rustup target add $(TARGET)
@@ -34,12 +35,13 @@ $(KERNEL_BIN): kernel
 	@$(OBJCOPY) $(KERNEL_ELF) --strip-all -O binary $@
 
 kernel:
+	@cd ../user && make build
 	@cargo build --release
 	@cp $(KERNEL_ELF) ../kernel-qemu
 
 clean:
 	@cargo clean
-# 	@cd ../user && make clean
+	@cd ../user && make clean
 
 run: build
 	@qemu-system-riscv64 \

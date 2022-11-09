@@ -62,7 +62,6 @@ pub fn rust_main() -> ! {
     clear_bss();
     logging::init();
     println!("[kernel] Hello, world!");
-    println!("#### independent command test");
     mm::init();
     mm::remap_test();
     trap::init();

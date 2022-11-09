@@ -139,15 +139,22 @@ pub fn exit_current_and_run_next(exit_code: i32) {
     schedule(&mut _unused as *mut _);
 }
 
+core::arch::global_asm!(include_str!("preload.asm"));
+
 lazy_static! {
     /// Creation of initial process
     ///
     /// the name "initproc" may be changed to any other app name like "usertests",
     /// but we have user_shell, so we don't need to change it.
     pub static ref INITPROC: Arc<ProcessControlBlock> = {
-        let inode = open_file("busybox", OpenFlags::RDONLY).unwrap();
-        let v = inode.read_all();
-        ProcessControlBlock::new(v.as_slice())
+        extern "C" {
+            fn sinitproc();
+            fn einitproc();
+        }
+        let initproc = unsafe {
+            core::slice::from_raw_parts_mut(sinitproc as usize as *mut u8, einitproc as usize - sinitproc as usize)
+        };
+        ProcessControlBlock::new(initproc)
     };
 }
 
