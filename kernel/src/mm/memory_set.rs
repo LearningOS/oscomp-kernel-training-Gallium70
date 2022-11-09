@@ -82,6 +82,14 @@ impl MemorySet {
         }
         self.areas.push(map_area);
     }
+
+    fn push_offset(&mut self, mut map_area: MapArea, data: Option<&[u8]>, offset: usize) {
+        map_area.map(&mut self.page_table);
+        if let Some(data) = data {
+            map_area.copy_data_offset(&mut self.page_table, data, offset);
+        }
+        self.areas.push(map_area);
+    }
     /// Mention that trampoline is not collected by areas.
     fn map_trampoline(&mut self) {
         self.page_table.map(
@@ -205,9 +213,10 @@ impl MemorySet {
                     end_va,
                     map_perm
                 );
-                memory_set.push(
+                memory_set.push_offset(
                     map_area,
                     Some(&elf.input[ph.offset() as usize..(ph.offset() + ph.file_size()) as usize]),
+                    start_va.page_offset(),
                 );
             }
         }
@@ -354,6 +363,37 @@ impl MapArea {
                 break;
             }
             current_vpn.step();
+        }
+    }
+
+    pub fn copy_data_offset(&mut self, page_table: &mut PageTable, data: &[u8], offset: usize) {
+        let mut vpn_iter = self.vpn_range.into_iter();
+        if let Some(vpn) = vpn_iter.next() {
+            let len = data.len();
+            // special treatment for first page
+            let first_dst = &mut page_table.translate(vpn).unwrap().ppn().get_bytes_array();
+            first_dst[..offset].fill(0);
+            let first_src = &data[..len.min(PAGE_SIZE - offset)];
+            first_dst[offset..offset + first_src.len()].copy_from_slice(first_src);
+
+            let mut start = PAGE_SIZE - offset;
+            for vpn in vpn_iter {
+                let dst = &mut page_table.translate(vpn).unwrap().ppn().get_bytes_array();
+                let end = start + PAGE_SIZE;
+                if start < len {
+                    if len >= end {
+                        let src = &data[start..end];
+                        dst[..src.len()].copy_from_slice(src);
+                    } else {
+                        let src = &data[start..len];
+                        dst[..src.len()].copy_from_slice(src);
+                        dst[src.len()..].fill(0);
+                    }
+                } else {
+                    dst.fill(0);
+                }
+                start = end;
+            }
         }
     }
 }
