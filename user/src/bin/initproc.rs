@@ -1,17 +1,35 @@
 #![no_std]
 #![no_main]
+
+#[macro_use]
+extern crate alloc;
+
+use alloc::vec::Vec;
 use log::{debug, info};
-use user_lib::{exec, exit, fork, logging, println, wait, waitpid, yield_};
+use user_lib::{exec, exit, fork, heap_init, logging, println, wait, waitpid, yield_};
 
 #[no_mangle]
 #[link_section = ".text.entry"]
 pub extern "C" fn _start() -> ! {
     logging::init();
+    unsafe { heap_init() };
     exit(main());
 }
 
-const APPS: [&str; 1] = [
+lazy_static::lazy_static! {
+static ref _PASSED: Vec<&'static str> = vec![
     "argv\0",
+    "basename\0",
+    "clocale_mbfuncs\0",
+    "clock_gettime\0",
+    "crypt\0",
+    "dirname\0",
+    "dn_expand_empty\0",
+    "dn_expand_ptr_0\0",
+];
+
+static ref APPS: Vec<&'static str> = vec![
+    // "argv\0",
     // "basename\0",
     // "clocale_mbfuncs\0",
     // "clock_gettime\0",
@@ -20,18 +38,18 @@ const APPS: [&str; 1] = [
     // "dirname\0",
     // "dn_expand_empty\0",
     // "dn_expand_ptr_0\0",
-    // "env\0",
-    // "fdopen\0",
-    // "fflush_exit\0",
-    // "fgets_eof\0",
-    // "fgetwc_buffering\0",
-    // "fnmatch\0",
-    // "fpclassify_invalid_ld80\0",
-    // "fscanf\0",
-    // "ftello_unflushed_append\0",
-    // "fwscanf\0",
-    // "getpwnam_r_crash\0",
-    // "getpwnam_r_errno\0",
+    "env\0",
+    "fdopen\0",
+    "fflush_exit\0",
+    "fgets_eof\0",
+    "fgetwc_buffering\0",
+    "fnmatch\0",
+    "fpclassify_invalid_ld80\0",
+    "fscanf\0",
+    "ftello_unflushed_append\0",
+    "fwscanf\0",
+    "getpwnam_r_crash\0",
+    "getpwnam_r_errno\0",
     // "iconv_open\0",
     // "iconv_roundtrips\0",
     // "inet_ntop_v4mapped\0",
@@ -120,6 +138,7 @@ const APPS: [&str; 1] = [
     // "wcsstr_false_negative\0",
     // "wcstol\0",
 ];
+}
 
 #[no_mangle]
 fn main() -> i32 {
@@ -142,7 +161,7 @@ fn main() -> i32 {
         core::ptr::null(),
     ];
 
-    for app in APPS {
+    for app in APPS.iter() {
         let pid = fork();
         if pid == 0 {
             exec(app, &[app.as_ptr()], &environ);
