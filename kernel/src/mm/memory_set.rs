@@ -59,6 +59,12 @@ impl MemorySet {
         end_va: VirtAddr,
         permission: MapPermission,
     ) {
+        trace!(
+            "Insert framed_area, start: 0x{:x}, end: 0x{:x}, perm: {:?}",
+            start_va.0,
+            end_va.0,
+            permission
+        );
         self.push(
             MapArea::new(start_va, end_va, MapType::Framed, permission),
             None,
@@ -190,7 +196,7 @@ impl MemorySet {
         let mut max_end_vpn = VirtPageNum(0);
         for i in 0..ph_count {
             let ph = elf.program_header(i).unwrap();
-            trace!("ph: {}", ph);
+            // trace!("ph: {}", ph);
             if ph.get_type().unwrap() == xmas_elf::program::Type::Load {
                 let start_va: VirtAddr = (ph.virtual_addr() as usize).into();
                 let end_va: VirtAddr = ((ph.virtual_addr() + ph.mem_size()) as usize).into();

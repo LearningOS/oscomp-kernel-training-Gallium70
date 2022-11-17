@@ -15,6 +15,7 @@ mod id;
 pub mod process;
 mod sync;
 mod thread;
+mod time;
 
 use crate::{fs::Stat, task::current_process};
 use core::convert::TryFrom;
@@ -23,6 +24,8 @@ use id::SyscallNo;
 use process::*;
 use sync::*;
 use thread::*;
+
+use self::time::sys_clock_gettime;
 
 /// handle syscall exception with `syscall_id` and other arguments
 pub fn syscall(syscall_id: usize, args: [usize; 4]) -> isize {
@@ -51,8 +54,10 @@ pub fn syscall(syscall_id: usize, args: [usize; 4]) -> isize {
             SyscallNo::WRITEV => sys_writev(args[0], args[1] as *const _, args[2]),
             SyscallNo::FSTAT => sys_fstat(args[0], args[1] as *mut Stat),
             SyscallNo::EXIT => sys_exit(args[0] as i32),
+            SyscallNo::EXIT_GROUP => sys_exit(args[0] as i32),
             SyscallNo::SET_TID_ADDRESS => sys_set_tid_address(),
             SyscallNo::NANOSLEEP => sys_sleep(args[0]),
+            SyscallNo::CLOCK_GET_TIME => sys_clock_gettime(args[0] as _, args[1] as _),
             SyscallNo::YIELD => sys_yield(),
             SyscallNo::GETPID => sys_getpid(),
             SyscallNo::GETTID => sys_gettid(),
@@ -62,11 +67,11 @@ pub fn syscall(syscall_id: usize, args: [usize; 4]) -> isize {
                 args[1] as *const usize,
                 args[2] as *const usize,
             ),
-
-            SyscallNo::MMAP => sys_mmap(args[0], args[1], args[2]),
+            SyscallNo::BRK => sys_brk(args[0] as _),
             SyscallNo::MUNMAP => sys_munmap(args[0], args[1]),
+            SyscallNo::MMAP => sys_mmap(args[0], args[1], args[2]),
             SyscallNo::WAIT4 => sys_waitpid(args[0] as _, args[1] as _) as isize,
-            _ => panic!("Unsupported syscall: {:?}", syscall),
+            _ => panic!("Unsupported syscall: {:?}({})", syscall, syscall_id),
         };
 
         match syscall {

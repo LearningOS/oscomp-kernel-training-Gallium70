@@ -105,6 +105,7 @@ pub fn trap_handler() -> ! {
             );
             // peek stack
             peek_user_mem(current_trap_cx().x[2] as _);
+            peek_user_mem(0x2eed0 as _);
             // page fault exit code
             exit_current_and_run_next(-2);
         }

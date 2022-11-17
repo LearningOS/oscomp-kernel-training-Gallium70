@@ -1,8 +1,13 @@
 //! Process management syscalls
 
-use crate::config::MAX_SYSCALL_NUM;
+use core::borrow::BorrowMut;
+use core::convert::TryInto;
+
+use crate::config::{MAX_SYSCALL_NUM, MMAP_BASE, PAGE_SIZE};
 use crate::fs::{open_file, OpenFlags};
-use crate::mm::{translated_ref, translated_refmut, translated_str, PageTable, VirtAddr};
+use crate::mm::{
+    translated_ref, translated_refmut, translated_str, MapPermission, PageTable, VirtAddr,
+};
 use crate::task::{
     current_process, current_task, current_user_token, exit_current_and_run_next,
     suspend_current_and_run_next, TaskStatus,
@@ -11,6 +16,7 @@ use crate::timer::get_time_us;
 use alloc::string::String;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
+use linux_raw_sys::errno::ENOMEM;
 
 #[repr(C)]
 #[derive(Debug)]
@@ -148,24 +154,28 @@ pub fn sys_get_time(_ts: *mut TimeVal, _tz: usize) -> isize {
     0
 }
 
-pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
-    -1
-}
-
 pub fn sys_set_priority(_prio: isize) -> isize {
     -1
 }
 
-pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
-    -1
+// TODO: Add full support on mmap
+pub fn sys_mmap(start: usize, len: usize, port: usize) -> isize {
+    let proc = current_process();
+    let mut inner = proc.inner_exclusive_access();
+    let start = if start == 0 { MMAP_BASE } else { start };
+    let len = if len == 0 { PAGE_SIZE } else { len };
+    inner.memory_set.insert_framed_area(
+        VirtAddr(start),
+        VirtAddr(start + len),
+        MapPermission::from_bits((port << 1).try_into().unwrap()).unwrap() | MapPermission::U,
+    );
+    start as isize
 }
 
 pub fn sys_munmap(_start: usize, _len: usize) -> isize {
     -1
 }
 
-//
-// ALERT: 注意在实现 SPAWN 时不需要复制父进程地址空间，SPAWN != FORK + EXEC
-pub fn sys_spawn(_path: *const u8) -> isize {
-    -1
+pub fn sys_brk(_end_data_segment: usize) -> isize {
+    -(ENOMEM as isize)
 }

@@ -17,6 +17,12 @@ xmas-elf = "0.8.0"
 virtio-drivers = { git = "https://github.com/rcore-os/virtio-drivers", rev = "f2fb8b9" }
 easy-fs = { path = "../easy-fs" }
 numeric-enum-macro = "0.2.0"
+linux-raw-sys = { version = "0.1.2", default-features = false, features = [
+    "general",
+    "errno",
+    "ioctl",
+    "no_std",
+] }
 # fatfs = { version = "0.3.5", default-features = false }
 
 # opt-level = "s"
