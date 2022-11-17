@@ -199,7 +199,7 @@ impl ProcessControlBlock {
         for (idx, addr) in argv.iter().enumerate() {
             *translated_refmut(
                 new_token,
-                (envp_base + idx * core::mem::size_of::<usize>()) as *mut usize,
+                (argv_base + idx * core::mem::size_of::<usize>()) as *mut usize,
             ) = *addr;
         }
 
